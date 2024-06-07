@@ -81,7 +81,7 @@ func (mw *MongoWatcher) Watch(ctx context.Context, c chan QueueUpdateMessage) er
 
 				msg := QueueUpdateMessage{
 					OpType: op,
-					Id:     data.DocumentKey.Hex(),
+					ID:     data.DocumentKey.Hex(),
 					Data:   data.FullDocument,
 				}
 

@@ -9,9 +9,9 @@ const (
 )
 
 type QueueUpdateMessage struct {
-	OpType OpType
-	Id     string
 	Data   interface{}
+	ID     string
+	OpType OpType
 }
 
 type QueueItem interface {
