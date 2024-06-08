@@ -31,7 +31,7 @@ func (m *Maestro) Listen() error {
 
 		go func() {
 			if err := m.ConnHandler.HandleConn(conn); err != nil {
-				m.Config.Logger.Error("error handling conn: %w", err)
+				m.Config.Logger.Error("error handling conn", slog.String("error", err.Error()))
 				conn.Close()
 				return
 			}

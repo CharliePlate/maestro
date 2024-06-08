@@ -23,7 +23,7 @@ type Unsubscriber interface {
 	Unsubscribe(queue string) error
 }
 
-// The writer and reader interface will be what is written/read from the net connection
+// The writer and reader interface will be what is written/read from the net connection.
 type Peer interface {
 	io.Writer
 	io.Reader

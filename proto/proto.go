@@ -59,6 +59,7 @@ func Unmarshal(data io.Reader, v any) error {
 		}
 
 		rf := reflect.ValueOf(v).Elem().FieldByName(nt.Name)
+		//nolint:exhaustive // throw in the default
 		switch rf.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			if len(b) != 8 {
