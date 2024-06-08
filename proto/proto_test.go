@@ -2,18 +2,19 @@ package proto_test
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/charlieplate/maestro/proto"
 	"github.com/stretchr/testify/require"
 )
 
-type byteString struct {
+type byteArrConv struct {
 	input     any
 	byteCount int
 }
 
-func stringToByteArray(s ...byteString) []byte {
+func stringToByteArray(s ...byteArrConv) []byte {
 	var b []byte
 
 	for _, st := range s {
@@ -70,49 +71,86 @@ func TestStringToByteArray(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := stringToByteArray(byteString{input: tc.input, byteCount: tc.byteCount})
+			result := stringToByteArray(byteArrConv{input: tc.input, byteCount: tc.byteCount})
 			require.Equal(t, tc.want, result)
 		})
 	}
 }
 
 func TestProto_Unmarshal(t *testing.T) {
-	type TestStruct struct {
+	type ValidInput struct {
 		Data          []byte `maestro:"position:3,bytecount:ContentLength"`
 		Version       int    `maestro:"position:1,bytecount:4"`
 		ContentLength int    `maestro:"position:2,bytecount:4"`
 	}
 
+	type InvalidPosition struct {
+		Value int `maestro:"position:3,bytecount:5"`
+	}
+
+	type DuplicatePosition struct {
+		Key1 int `maestro:"position:1,bytecount:4"`
+		Key2 int `maestro:"position:1,bytecount:4"`
+	}
+
 	testCases := []struct {
 		expectedError  error
-		input          []byte
+		expectedOutput any
+		output         any
 		name           string
-		expectedOutput TestStruct
+		input          []byte
 	}{
 		{
 			name: "Valid input",
 			input: stringToByteArray(
-				byteString{input: 1, byteCount: 4},
-				byteString{input: 5, byteCount: 4},
-				byteString{input: "hello", byteCount: 5},
+				byteArrConv{input: 1, byteCount: 4},
+				byteArrConv{input: 5, byteCount: 4},
+				byteArrConv{input: "hello", byteCount: 5},
 			),
-			expectedOutput: TestStruct{
+			expectedOutput: &ValidInput{
 				Version:       1,
 				ContentLength: 5,
 				Data:          []byte("hello"),
 			},
 			expectedError: nil,
+			output:        &ValidInput{},
+		},
+		{
+			name: "Invalid position",
+			input: stringToByteArray(
+				byteArrConv{input: "hello", byteCount: 5},
+			),
+			expectedOutput: &InvalidPosition{},
+			expectedError:  proto.ErrInvalidPosition,
+			output:         &InvalidPosition{},
+		},
+		{
+			name: "Duplicate position",
+			input: stringToByteArray(
+				byteArrConv{input: 1, byteCount: 4},
+				byteArrConv{input: 1, byteCount: 4},
+			),
+			expectedOutput: &DuplicatePosition{},
+			expectedError:  proto.ErrDuplicatePosition,
+			output:         &DuplicatePosition{},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var ts TestStruct
-			reader := bytes.NewReader(tc.input)
-			err := proto.Unmarshal(reader, &ts)
+			// some catches for the tests for future devs because it is a bit unintuitive from the tc struct
+			if reflect.ValueOf(tc.output).Kind() != reflect.Ptr || reflect.ValueOf(tc.output).IsNil() {
+				t.Fatalf("output must be a pointer and not nil")
+			}
 
+			if reflect.ValueOf(tc.expectedOutput).Kind() != reflect.Ptr || reflect.ValueOf(tc.expectedOutput).IsNil() {
+				t.Fatalf("expectedOutput must be a pointer and not nil")
+			}
+
+			reader := bytes.NewReader(tc.input)
+			err := proto.Unmarshal(reader, tc.output)
 			require.Equal(t, tc.expectedError, err)
-			require.Equal(t, tc.expectedOutput, ts)
+			require.Equal(t, tc.expectedOutput, tc.output)
 		})
 	}
 }

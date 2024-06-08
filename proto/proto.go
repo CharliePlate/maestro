@@ -9,13 +9,19 @@ import (
 	"slices"
 )
 
+var (
+	ErrDuplicatePosition = errors.New("duplicate position")
+	ErrInvalidPosition   = errors.New("invalid position")
+	ErrRequiresPointer   = errors.New("t must be a pointer")
+)
+
 func Unmarshal(data io.Reader, v any) error {
 	p := map[string]StructTag{}
 	pos := map[int]bool{}
 	m := 0
 
 	if reflect.TypeOf(v).Kind() != reflect.Ptr {
-		return errors.New("t must be a pointer")
+		return ErrRequiresPointer
 	}
 
 	fields := reflect.VisibleFields(reflect.ValueOf(v).Elem().Type())
@@ -31,7 +37,7 @@ func Unmarshal(data io.Reader, v any) error {
 		}
 
 		if _, ok := pos[d.Position]; ok {
-			return errors.New("duplicate position")
+			return ErrDuplicatePosition
 		}
 		pos[d.Position] = true
 
@@ -41,7 +47,7 @@ func Unmarshal(data io.Reader, v any) error {
 
 	for i := range m {
 		if _, ok := pos[i+1]; !ok {
-			return errors.New("missing position")
+			return ErrInvalidPosition
 		}
 	}
 
