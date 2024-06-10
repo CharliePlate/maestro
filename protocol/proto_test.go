@@ -1,11 +1,11 @@
-package proto_test
+package protocol_test
 
 import (
 	"bytes"
 	"reflect"
 	"testing"
 
-	"github.com/charlieplate/maestro/proto"
+	"github.com/charlieplate/maestro/protocol"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +23,7 @@ func stringToByteArray(s ...byteArrConv) []byte {
 		case string:
 			tb = []byte(v)
 		case int:
-			tb = intToBytes(v, st.byteCount)
+			tb = protocol.IntToBytes(v, st.byteCount)
 		default:
 			panic("Unknown type")
 		}
@@ -36,14 +36,6 @@ func stringToByteArray(s ...byteArrConv) []byte {
 		}
 
 		b = append(b, tb...)
-	}
-	return b
-}
-
-func intToBytes(n int, byteCount int) []byte {
-	b := make([]byte, byteCount)
-	for i := range byteCount {
-		b[byteCount-i-1] = byte(n >> (8 * i) & 0xFF)
 	}
 	return b
 }
@@ -93,6 +85,13 @@ func TestProto_Unmarshal(t *testing.T) {
 		Key2 int `maestro:"position:1,bytecount:4"`
 	}
 
+	type ValidInputWithDataAfterDynamicSize struct {
+		Data          []byte `maestro:"position:3,bytecount:ContentLength"`
+		ExtraData     []byte `maestro:"position:4,bytecount:ContentLength"`
+		Version       int    `maestro:"position:1,bytecount:4"`
+		ContentLength int    `maestro:"position:2,bytecount:4"`
+	}
+
 	testCases := []struct {
 		expectedError  error
 		expectedOutput any
@@ -121,7 +120,7 @@ func TestProto_Unmarshal(t *testing.T) {
 				byteArrConv{input: "hello", byteCount: 5},
 			),
 			expectedOutput: &InvalidPosition{},
-			expectedError:  proto.ErrInvalidPosition,
+			expectedError:  protocol.ErrInvalidPosition,
 			output:         &InvalidPosition{},
 		},
 		{
@@ -131,8 +130,25 @@ func TestProto_Unmarshal(t *testing.T) {
 				byteArrConv{input: 1, byteCount: 4},
 			),
 			expectedOutput: &DuplicatePosition{},
-			expectedError:  proto.ErrDuplicatePosition,
+			expectedError:  protocol.ErrDuplicatePosition,
 			output:         &DuplicatePosition{},
+		},
+		{
+			name: "Valid input with byte count dependency",
+			input: stringToByteArray(
+				byteArrConv{input: 1, byteCount: 4},
+				byteArrConv{input: 5, byteCount: 4},
+				byteArrConv{input: "hello", byteCount: 5},
+				byteArrConv{input: "world", byteCount: 5},
+			),
+			expectedOutput: &ValidInputWithDataAfterDynamicSize{
+				Version:       1,
+				ContentLength: 5,
+				Data:          []byte("hello"),
+				ExtraData:     []byte("world"),
+			},
+			expectedError: nil,
+			output:        &ValidInputWithDataAfterDynamicSize{},
 		},
 	}
 
@@ -148,9 +164,47 @@ func TestProto_Unmarshal(t *testing.T) {
 			}
 
 			reader := bytes.NewReader(tc.input)
-			err := proto.Unmarshal(reader, tc.output)
+			err := protocol.Unmarshal(reader, tc.output)
 			require.Equal(t, tc.expectedError, err)
 			require.Equal(t, tc.expectedOutput, tc.output)
+		})
+	}
+}
+
+func TestProto_Marshal(t *testing.T) {
+	type ValidInput struct {
+		Data          []byte `maestro:"position:3,bytecount:ContentLength"`
+		Version       int    `maestro:"position:1,bytecount:4"`
+		ContentLength int    `maestro:"position:2,bytecount:4"`
+	}
+
+	tc := []struct {
+		name          string
+		input         any
+		expected      []byte
+		expectedError error
+	}{
+		{
+			name: "Valid input",
+			input: ValidInput{
+				Version:       1,
+				ContentLength: 5,
+				Data:          []byte("hello"),
+			},
+			expected: stringToByteArray(
+				byteArrConv{input: 1, byteCount: 4},
+				byteArrConv{input: 5, byteCount: 4},
+				byteArrConv{input: "hello", byteCount: 5},
+			),
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range tc {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := protocol.Marshal(tc.input)
+			require.Equal(t, tc.expectedError, err)
+			require.Equal(t, tc.expected, data)
 		})
 	}
 }
