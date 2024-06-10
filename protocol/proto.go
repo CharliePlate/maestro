@@ -16,8 +16,6 @@ var (
 	ErrRequiresPointer   = errors.New("t must be a pointer")
 )
 
-const SizeKeyDynamic = -1
-
 func Unmarshal(data io.Reader, v any) error {
 	if reflect.TypeOf(v).Kind() != reflect.Ptr {
 		return ErrRequiresPointer
@@ -32,7 +30,6 @@ func Unmarshal(data io.Reader, v any) error {
 
 	ts := sortedTagArr(t)
 	for _, nt := range ts {
-
 		if nt.Size == 0 && nt.SizeKey != "" {
 			refSize := elem.FieldByName(nt.SizeKey)
 			nt.Size = int(refSize.Int())
