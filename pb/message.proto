@@ -1,0 +1,20 @@
+syntax = "proto3";
+package pb;
+
+option go_package = "./pb";
+
+import "google/protobuf/any.proto";
+
+message Wrapper {
+  string ProtoVersion = 1;
+  string ConnId = 2;
+  google.protobuf.Any Content = 3;
+}
+
+message Subscribe {
+  string Queue = 1;
+}
+
+message Unsubscribe {
+  string Queue = 1;
+}
