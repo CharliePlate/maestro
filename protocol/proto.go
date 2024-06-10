@@ -23,7 +23,8 @@ func Unmarshal(data io.Reader, v any) error {
 		return ErrRequiresPointer
 	}
 
-	fields := reflect.VisibleFields(reflect.ValueOf(v).Elem().Type())
+	elem := reflect.ValueOf(v).Elem()
+	fields := reflect.VisibleFields(elem.Type())
 	t, err := parseTags(fields)
 	if err != nil {
 		return err
@@ -31,8 +32,9 @@ func Unmarshal(data io.Reader, v any) error {
 
 	ts := sortedTagArr(t)
 	for _, nt := range ts {
+
 		if nt.Size == 0 && nt.SizeKey != "" {
-			refSize := reflect.ValueOf(v).Elem().FieldByName(nt.SizeKey)
+			refSize := elem.FieldByName(nt.SizeKey)
 			nt.Size = int(refSize.Int())
 		}
 
@@ -42,7 +44,7 @@ func Unmarshal(data io.Reader, v any) error {
 			return err
 		}
 
-		rf := reflect.ValueOf(v).Elem().FieldByName(nt.Name)
+		rf := elem.FieldByName(nt.Name)
 		//nolint:exhaustive // throw in the default
 		switch rf.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -96,14 +98,16 @@ func Marshal(v any) ([]byte, error) {
 	ts := sortedTagArr(t)
 	b := make([][]byte, len(ts))
 
+	val := reflect.ValueOf(v)
+
 	for _, nt := range ts {
 		size := nt.Size
 		if size == 0 && nt.SizeKey != "" {
-			refSize := reflect.ValueOf(v).FieldByName(nt.SizeKey)
+			refSize := val.FieldByName(nt.SizeKey)
 			size = int(refSize.Int())
 		}
 
-		rf := reflect.ValueOf(v).FieldByName(nt.Name)
+		rf := val.FieldByName(nt.Name)
 		var fieldBytes []byte
 		//nolint:exhaustive // throw in the default
 		switch rf.Kind() {

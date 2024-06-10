@@ -178,6 +178,17 @@ func TestProto_Marshal(t *testing.T) {
 		ContentLength int    `maestro:"position:2,bytecount:4"`
 	}
 
+	type InvalidPosition struct {
+		Value int `maestro:"position:3,bytecount:5"`
+	}
+
+	type TwoDependentFields struct {
+		FirstSize  int    `maestro:"position:1,bytecount:4"`
+		FirstData  string `maestro:"position:2,bytecount:FirstSize"`
+		SecondSize int    `maestro:"position:3,bytecount:4"`
+		SecondData string `maestro:"position:4,bytecount:SecondSize"`
+	}
+
 	tc := []struct {
 		name          string
 		input         any
@@ -194,7 +205,31 @@ func TestProto_Marshal(t *testing.T) {
 			expected: stringToByteArray(
 				byteArrConv{input: 1, byteCount: 4},
 				byteArrConv{input: 5, byteCount: 4},
+				byteArrConv{input: "helloworld", byteCount: 5},
+			),
+			expectedError: nil,
+		},
+		{
+			name: "Invalid position",
+			input: InvalidPosition{
+				Value: 1,
+			},
+			expected:      nil,
+			expectedError: protocol.ErrInvalidPosition,
+		},
+		{
+			name: "Two dependent fields",
+			input: TwoDependentFields{
+				FirstSize:  5,
+				FirstData:  "hello",
+				SecondSize: 5,
+				SecondData: "world",
+			},
+			expected: stringToByteArray(
+				byteArrConv{input: 5, byteCount: 4},
 				byteArrConv{input: "hello", byteCount: 5},
+				byteArrConv{input: 5, byteCount: 4},
+				byteArrConv{input: "world", byteCount: 5},
 			),
 			expectedError: nil,
 		},
