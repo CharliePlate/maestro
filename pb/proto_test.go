@@ -12,13 +12,13 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-type testWrapper struct {
+type testMsg struct {
 	Content proto.Message
 	ConnID  string
 	Version string
 }
 
-func unsafeMarshalWrapper(tw testWrapper, content proto.Message) []byte {
+func unsafeUnmarshalMsg(tm testMsg, content proto.Message) []byte {
 	a := &anypb.Any{}
 	err := a.MarshalFrom(content)
 	if err != nil {
@@ -27,10 +27,10 @@ func unsafeMarshalWrapper(tw testWrapper, content proto.Message) []byte {
 
 	d := []byte{0x00, 0x00, 0x00, 0x01}
 
-	w := &pb.Wrapper{
+	w := &pb.Message{
 		Content:      a,
-		ConnId:       tw.ConnID,
-		ProtoVersion: tw.Version,
+		ConnId:       tm.ConnID,
+		ProtoVersion: tm.Version,
 	}
 
 	data, err := proto.Marshal(w)
@@ -55,7 +55,7 @@ func TestProtobuf_ParseIncoming(t *testing.T) {
 	}{
 		{
 			Name: "Valid Input",
-			Incoming: unsafeMarshalWrapper(testWrapper{
+			Incoming: unsafeUnmarshalMsg(testMsg{
 				Version: "3.0.0",
 				ConnID:  "123",
 			}, &pb.Subscribe{
@@ -69,7 +69,7 @@ func TestProtobuf_ParseIncoming(t *testing.T) {
 		},
 		{
 			Name: "Invalid Version",
-			Incoming: unsafeMarshalWrapper(testWrapper{
+			Incoming: unsafeUnmarshalMsg(testMsg{
 				Version: "2.0.0",
 			}, &pb.Subscribe{}),
 			ExpectedContent: nil,

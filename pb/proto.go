@@ -28,22 +28,22 @@ type ProtobufDecoder struct{}
 func (pbd *ProtobufDecoder) ParseIncoming(data []byte) (maestro.Message, error) {
 	d := parse(data)
 
-	wrapper, err := unmarshalWrapper(d.Data)
+	msg, err := unmarshalMessage(d.Data)
 	if err != nil {
 		return maestro.Message{}, err
 	}
 
 	m := maestro.Message{
-		ConnID:     wrapper.GetConnId(),
+		ConnID:     msg.GetConnId(),
 		Content:    nil,
 		ActionType: "",
 	}
 
-	if err = validProtoVersion(wrapper.GetProtoVersion()); err != nil {
+	if err = validProtoVersion(msg.GetProtoVersion()); err != nil {
 		return m, err
 	}
 
-	c := wrapper.GetContent()
+	c := msg.GetContent()
 	msgType, err := protoregistry.GlobalTypes.FindMessageByURL(c.GetTypeUrl())
 	if err != nil {
 		return m, err
@@ -67,13 +67,13 @@ func (pbd *ProtobufDecoder) ParseIncoming(data []byte) (maestro.Message, error) 
 	return m, nil
 }
 
-func unmarshalWrapper(d []byte) (*Wrapper, error) {
-	wrapper := &Wrapper{}
-	err := proto.Unmarshal(d, wrapper)
+func unmarshalMessage(d []byte) (*Message, error) {
+	msg := &Message{}
+	err := proto.Unmarshal(d, msg)
 	if err != nil {
 		return nil, err
 	}
-	return wrapper, nil
+	return msg, nil
 }
 
 var (

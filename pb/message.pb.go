@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Wrapper struct {
+type Message struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -31,8 +31,8 @@ type Wrapper struct {
 	Content      *anypb.Any `protobuf:"bytes,3,opt,name=Content,proto3" json:"Content,omitempty"`
 }
 
-func (x *Wrapper) Reset() {
-	*x = Wrapper{}
+func (x *Message) Reset() {
+	*x = Message{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pb_message_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -40,13 +40,13 @@ func (x *Wrapper) Reset() {
 	}
 }
 
-func (x *Wrapper) String() string {
+func (x *Message) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Wrapper) ProtoMessage() {}
+func (*Message) ProtoMessage() {}
 
-func (x *Wrapper) ProtoReflect() protoreflect.Message {
+func (x *Message) ProtoReflect() protoreflect.Message {
 	mi := &file_pb_message_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -58,26 +58,26 @@ func (x *Wrapper) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Wrapper.ProtoReflect.Descriptor instead.
-func (*Wrapper) Descriptor() ([]byte, []int) {
+// Deprecated: Use Message.ProtoReflect.Descriptor instead.
+func (*Message) Descriptor() ([]byte, []int) {
 	return file_pb_message_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Wrapper) GetProtoVersion() string {
+func (x *Message) GetProtoVersion() string {
 	if x != nil {
 		return x.ProtoVersion
 	}
 	return ""
 }
 
-func (x *Wrapper) GetConnId() string {
+func (x *Message) GetConnId() string {
 	if x != nil {
 		return x.ConnId
 	}
 	return ""
 }
 
-func (x *Wrapper) GetContent() *anypb.Any {
+func (x *Message) GetContent() *anypb.Any {
 	if x != nil {
 		return x.Content
 	}
@@ -184,7 +184,7 @@ var file_pb_message_proto_rawDesc = []byte{
 	0x0a, 0x10, 0x70, 0x62, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x12, 0x02, 0x70, 0x62, 0x1a, 0x19, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x61, 0x6e, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x22, 0x75, 0x0a, 0x07, 0x57, 0x72, 0x61, 0x70, 0x70, 0x65, 0x72, 0x12, 0x22, 0x0a, 0x0c,
+	0x6f, 0x22, 0x75, 0x0a, 0x07, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x22, 0x0a, 0x0c,
 	0x50, 0x72, 0x6f, 0x74, 0x6f, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x0c, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
 	0x12, 0x16, 0x0a, 0x06, 0x43, 0x6f, 0x6e, 0x6e, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
@@ -213,13 +213,13 @@ func file_pb_message_proto_rawDescGZIP() []byte {
 
 var file_pb_message_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pb_message_proto_goTypes = []interface{}{
-	(*Wrapper)(nil),     // 0: pb.Wrapper
+	(*Message)(nil),     // 0: pb.Message
 	(*Subscribe)(nil),   // 1: pb.Subscribe
 	(*Unsubscribe)(nil), // 2: pb.Unsubscribe
 	(*anypb.Any)(nil),   // 3: google.protobuf.Any
 }
 var file_pb_message_proto_depIdxs = []int32{
-	3, // 0: pb.Wrapper.Content:type_name -> google.protobuf.Any
+	3, // 0: pb.Message.Content:type_name -> google.protobuf.Any
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -234,7 +234,7 @@ func file_pb_message_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_pb_message_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Wrapper); i {
+			switch v := v.(*Message); i {
 			case 0:
 				return &v.state
 			case 1:
