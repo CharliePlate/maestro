@@ -100,8 +100,8 @@ func Marshal(v any) ([]byte, error) {
 	for _, nt := range ts {
 		size := nt.Size
 		if size == 0 && nt.SizeKey != "" {
-			refSize := val.FieldByName(nt.SizeKey)
-			size = int(refSize.Int())
+			mySize := val.FieldByName(nt.Name).Bytes()
+			size = len(mySize)
 		}
 
 		rf := val.FieldByName(nt.Name)

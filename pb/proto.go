@@ -1,14 +1,13 @@
 package pb
 
 import (
-	"bytes"
+	"encoding/binary"
 	"errors"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/charlieplate/maestro"
-	"github.com/charlieplate/maestro/protocol"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
@@ -18,20 +17,16 @@ const (
 )
 
 type ParsedTag struct {
-	Data          []byte `maestro:"position:3,bytecount:ContentLength"`
-	Version       int    `maestro:"position:1,bytecount:4"`
-	ContentLength int    `maestro:"position:2,bytecount:4"`
+	Data          []byte
+	Version       int
+	ContentLength int
 }
 
 type ProtobufDecoder struct{}
 
 // Returns the message, the type of the message, and an error
 func (pbd *ProtobufDecoder) ParseIncoming(data []byte) (maestro.Message, error) {
-	var d ParsedTag
-	err := protocol.Unmarshal(bytes.NewReader(data), &d)
-	if err != nil {
-		return maestro.Message{}, err
-	}
+	d := parse(data)
 
 	wrapper, err := unmarshalWrapper(d.Data)
 	if err != nil {
@@ -105,4 +100,14 @@ func validProtoVersion(v string) error {
 		}
 	}
 	return nil
+}
+
+func parse(d []byte) ParsedTag {
+	p := ParsedTag{}
+
+	p.Version = int(binary.BigEndian.Uint16(d[:4]))
+	p.ContentLength = int(binary.BigEndian.Uint16(d[4:8]))
+	p.Data = d[8:]
+
+	return p
 }

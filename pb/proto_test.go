@@ -5,8 +5,10 @@ import (
 
 	"github.com/charlieplate/maestro/pb"
 	"github.com/charlieplate/maestro/protocol"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -16,12 +18,14 @@ type testWrapper struct {
 	Version string
 }
 
-func unsafeMarshalWrapper(tw testWrapper, src proto.Message) []byte {
+func unsafeMarshalWrapper(tw testWrapper, content proto.Message) []byte {
 	a := &anypb.Any{}
-	err := a.MarshalFrom(src)
+	err := a.MarshalFrom(content)
 	if err != nil {
 		panic(err)
 	}
+
+	d := []byte{0x00, 0x00, 0x00, 0x01}
 
 	w := &pb.Wrapper{
 		Content:      a,
@@ -34,18 +38,10 @@ func unsafeMarshalWrapper(tw testWrapper, src proto.Message) []byte {
 		panic(err)
 	}
 
-	p := pb.ParsedTag{
-		Data:          data,
-		Version:       1,
-		ContentLength: 0,
-	}
+	d = append(d, protocol.IntToBytes(len(data), 4)...)
+	d = append(d, data...)
 
-	mar, err := protocol.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-
-	return mar
+	return d
 }
 
 func TestProtobuf_ParseIncoming(t *testing.T) {
@@ -68,19 +64,17 @@ func TestProtobuf_ParseIncoming(t *testing.T) {
 			ExpectedContent: &pb.Subscribe{
 				Queue: "test123",
 			},
-			ExpectedConnID:      "123",
-			ExpectedContentType: &pb.Subscribe{},
-			ExpectedError:       nil,
+			ExpectedConnID: "123",
+			ExpectedError:  nil,
 		},
 		{
 			Name: "Invalid Version",
 			Incoming: unsafeMarshalWrapper(testWrapper{
 				Version: "2.0.0",
 			}, &pb.Subscribe{}),
-			ExpectedContent:     nil,
-			ExpectedConnID:      "",
-			ExpectedContentType: "",
-			ExpectedError:       pb.ErrInvalidProtoVersion,
+			ExpectedContent: nil,
+			ExpectedConnID:  "",
+			ExpectedError:   pb.ErrInvalidProtoVersion,
 		},
 	}
 
@@ -94,7 +88,7 @@ func TestProtobuf_ParseIncoming(t *testing.T) {
 				require.NoError(t, err, "Error not expected")
 				require.NotNil(t, msg, "ConnID IS nil")
 				require.Equal(t, tc.ExpectedConnID, msg.ConnID, "ConnID mismatch")
-				require.Equal(t, tc.ExpectedContentType, msg.Content, "Content mismatch")
+				require.True(t, cmp.Equal(tc.ExpectedContent, msg.Content, protocmp.Transform()), cmp.Diff(tc.ExpectedContent, msg.Content, protocmp.Transform()))
 			}
 		})
 	}
