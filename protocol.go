@@ -28,8 +28,8 @@ type BinaryAuthContentMessage struct {
 }
 
 type AuthInfo struct {
-	ConnID string
 	Claims map[string]any
+	ConnID string
 }
 
 func (au *BinaryAuthContentProtocol) Authenticate(m AuthInfo) (AuthInfo, error) {

@@ -11,8 +11,8 @@ import (
 
 type TestAuthenticator struct {
 	Error  error
-	ConnID string
 	Claims map[string]any
+	ConnID string
 }
 
 func (ta *TestAuthenticator) Authenticate(_ any) (maestro.AuthInfo, error) {
@@ -218,8 +218,8 @@ func makeBinaryAuthStream(m maestro.BinaryAuthContentMessage) []byte {
 
 type BinaryAuthTestAuthenticator struct {
 	Error  error
-	Valid  bool
 	ConnID string
+	Valid  bool
 }
 
 func (ta BinaryAuthTestAuthenticator) Authenticate(any) (maestro.AuthInfo, error) {
