@@ -223,9 +223,9 @@ func (ta BinaryAuthTestAuthenticator) Authenticate(data any) (map[string]any, er
 }
 
 type BinaryAuthTestParser struct {
+	Error      error
 	ActionType maestro.ActionType
 	ConnID     string
-	Error      error
 }
 
 func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
@@ -257,11 +257,11 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 		data any
 	}
 	tests := []struct {
-		name    string
 		fields  fields
 		args    args
 		want    any
 		wantErr error
+		name    string
 	}{
 		{
 			name: "Valid Input",
@@ -287,6 +287,31 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 			},
 			want:    inputResult,
 			wantErr: nil,
+		},
+		{
+			name: "Invalid Terminator",
+			fields: fields{
+				Authenticator: BinaryAuthTestAuthenticator{
+					Error: nil,
+					Valid: true,
+				},
+				Parser: BinaryAuthTestParser{
+					ActionType: maestro.ActionTypeSubscribe,
+					ConnID:     "conn_id",
+					Error:      nil,
+				},
+			},
+			args: args{
+				data: append(makeBinaryAuthStream(maestro.BinaryAuthContentMessage{
+					Version:     1,
+					AuthSize:    4,
+					Auth:        []byte("auth"),
+					ContentSize: len([]byte("content")),
+					Content:     []byte("content"),
+				}), 0x1F),
+			},
+			want:    maestro.Message{},
+			wantErr: maestro.ErrInvalidTerminator,
 		},
 	}
 	for _, tt := range tests {

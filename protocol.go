@@ -42,6 +42,8 @@ func checkNextByteIsSeperator(d []byte, offset int) error {
 	return nil
 }
 
+var ErrInvalidTerminator = errors.New("invalid terminator")
+
 func (au *BinaryAuthContentProtocol) parseToMessage(d []byte) (BinaryAuthContentMessage, error) {
 	offset := 0
 	acm := BinaryAuthContentMessage{}
@@ -103,12 +105,17 @@ func (au *BinaryAuthContentProtocol) parseToMessage(d []byte) (BinaryAuthContent
 
 	term, err := safeByteRange(d, offset, offset+3)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", ErrInvalidTerminator)
+	}
+	offset += 3
+
+	if _, isNotEOF := safeByteRange(d, offset, offset+1); isNotEOF == nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w - unexpected data", ErrInvalidTerminator)
 	}
 
 	for _, b := range term {
 		if b != 0x1E {
-			return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", errors.New("invalid terminator"))
+			return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", ErrInvalidTerminator)
 		}
 	}
 
