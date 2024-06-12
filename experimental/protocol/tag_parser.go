@@ -1,4 +1,4 @@
-package proto
+package protocol
 
 import (
 	"errors"
@@ -23,11 +23,7 @@ type StructTag struct {
 
 func parseTag(tag string) (StructTag, error) {
 	parsed := []string{}
-	p := StructTag{
-		SizeKey:  "",
-		Position: 0,
-		Size:     0,
-	}
+	p := StructTag{}
 
 	tags := strings.Split(tag, ",")
 	for _, t := range tags {
