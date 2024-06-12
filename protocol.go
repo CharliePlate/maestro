@@ -27,8 +27,13 @@ type BinaryAuthContentMessage struct {
 	ContentSize int
 }
 
-func (au *BinaryAuthContentProtocol) Authenticate(auth any) (map[string]any, error) {
-	return au.Authenticator.Authenticate(auth)
+type AuthInfo struct {
+	ConnID string
+	Claims map[string]any
+}
+
+func (au *BinaryAuthContentProtocol) Authenticate(m AuthInfo) (AuthInfo, error) {
+	return au.Authenticator.Authenticate(m)
 }
 
 func (au *BinaryAuthContentProtocol) Parse(data any) (Message, error) {
@@ -143,13 +148,7 @@ func (au *BinaryAuthContentProtocol) ParseIncoming(data any) (Message, error) {
 		return Message{}, err
 	}
 
-	if connID, ok := auth["conn_id"]; ok {
-		if connIDStr, ok := connID.(string); ok {
-			msg.ConnID = connIDStr
-		} else {
-			return Message{}, fmt.Errorf("ParseIncoming: %w", errors.New("invalid conn_id"))
-		}
-	}
+	msg.ConnID = auth.ConnID
 
 	return msg, nil
 }
@@ -164,7 +163,7 @@ type Parser interface {
 }
 
 type Authenticator interface {
-	Authenticate(auth any) (map[string]any, error)
+	Authenticate(auth any) (AuthInfo, error)
 }
 
 type NilAuthenticator struct{}
@@ -173,8 +172,8 @@ func NewNilAuthenticator() *NilAuthenticator {
 	return &NilAuthenticator{}
 }
 
-func (na *NilAuthenticator) Authenticate(any) error {
-	return nil
+func (na *NilAuthenticator) Authenticate(any) (AuthInfo, error) {
+	return AuthInfo{}, nil
 }
 
 type JWTAuthenticator struct {
@@ -194,10 +193,10 @@ func NewJWTAuthenticator(opts JWTAuthenticatorOpts) *JWTAuthenticator {
 var ErrUnauthorized = errors.New("unauthorized")
 
 // Authenticate takes a token string and returns the claims if the token is valid
-func (j *JWTAuthenticator) Authenticate(data any) (map[string]any, error) {
+func (j *JWTAuthenticator) Authenticate(data any) (AuthInfo, error) {
 	ts, ok := data.(string)
 	if !ok {
-		return map[string]any{}, fmt.Errorf("authenticate: %w: %s", ErrUnauthorized, "invalid token")
+		return AuthInfo{}, fmt.Errorf("authenticate: %w: %s", ErrUnauthorized, "invalid token")
 	}
 
 	token, err := jwt.Parse(ts, func(token *jwt.Token) (interface{}, error) {
@@ -208,23 +207,27 @@ func (j *JWTAuthenticator) Authenticate(data any) (map[string]any, error) {
 		return []byte(j.Opts.Secret), nil
 	})
 	if err != nil {
-		return map[string]any{}, fmt.Errorf("%w: %s", ErrUnauthorized, err.Error())
+		return AuthInfo{}, fmt.Errorf("%w: %s", ErrUnauthorized, err.Error())
 	}
 
 	if !token.Valid {
-		return map[string]any{}, ErrUnauthorized
+		return AuthInfo{}, ErrUnauthorized
 	}
 
 	tokenClaims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return map[string]any{}, errors.New("invalid claims")
+		return AuthInfo{}, errors.New("invalid claims")
 	}
 
-	for k, v := range tokenClaims {
-		tokenClaims[k] = v
+	connID, ok := tokenClaims["conn_id"]
+	if !ok {
+		return AuthInfo{}, errors.New("missing conn_id")
 	}
 
-	return tokenClaims, nil
+	return AuthInfo{
+		ConnID: connID.(string),
+		Claims: tokenClaims,
+	}, nil
 }
 
 func IntToBytes(n int, byteCount int) []byte {
