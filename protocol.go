@@ -35,19 +35,96 @@ func (au *BinaryAuthContentProtocol) Parse(data any) (Message, error) {
 	return au.Parser.Parse(data)
 }
 
+func checkNextByteIsSeperator(d []byte, offset int) error {
+	if d[offset] != 0x1E {
+		return fmt.Errorf("checkNextByteIsSeperator: %w", errors.New("invalid seperator"))
+	}
+	return nil
+}
+
+func (au *BinaryAuthContentProtocol) parseToMessage(d []byte) (BinaryAuthContentMessage, error) {
+	offset := 0
+	acm := BinaryAuthContentMessage{}
+	ver, err := safeByteRange(d, offset, 4)
+	if err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	acm.Version = int(binary.BigEndian.Uint32(ver))
+	offset += 4
+
+	if err = checkNextByteIsSeperator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	offset++
+
+	as, err := safeByteRange(d, offset, offset+4)
+	if err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+
+	acm.AuthSize = int(binary.BigEndian.Uint32(as))
+
+	offset += 4
+	if err = checkNextByteIsSeperator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	offset++
+
+	auth, err := safeByteRange(d, offset, offset+acm.AuthSize)
+	if err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	acm.Auth = auth
+	offset += acm.AuthSize
+
+	if err = checkNextByteIsSeperator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	offset++
+
+	cs, err := safeByteRange(d, offset, offset+4)
+	if err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	acm.ContentSize = int(binary.BigEndian.Uint32(cs))
+	offset += 4
+
+	if err = checkNextByteIsSeperator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	offset++
+
+	content, err := safeByteRange(d, offset, offset+acm.ContentSize)
+	if err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+	acm.Content = content
+	offset += acm.ContentSize
+
+	term, err := safeByteRange(d, offset, offset+3)
+	if err != nil {
+		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	}
+
+	for _, b := range term {
+		if b != 0x1E {
+			return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", errors.New("invalid terminator"))
+		}
+	}
+
+	return acm, nil
+}
+
 func (au *BinaryAuthContentProtocol) ParseIncoming(data any) (Message, error) {
 	d, ok := data.([]byte)
 	if !ok {
 		return Message{}, fmt.Errorf("ParseIncoming: %w", errors.New("invalid data"))
 	}
 
-	acm := BinaryAuthContentMessage{}
-	acm.Version = int(binary.BigEndian.Uint32(d[:4]))
-	acm.AuthSize = int(binary.BigEndian.Uint32(d[4:8]))
-	authOffset := 8 + acm.AuthSize
-	acm.Auth = d[8:authOffset]
-	acm.ContentSize = int(binary.BigEndian.Uint32(d[authOffset : authOffset+4]))
-	acm.Content = d[authOffset+4 : acm.ContentSize+authOffset+4]
+	acm, err := au.parseToMessage(d)
+	if err != nil {
+		return Message{}, err
+	}
 
 	// Validate Version at some point
 	_ = acm.Version
@@ -152,4 +229,17 @@ func IntToBytes(n int, byteCount int) []byte {
 		b[byteCount-i-1] = byte(n >> (8 * i) & 0xFF)
 	}
 	return b
+}
+
+func safeByteRange(b []byte, start, end int) ([]byte, error) {
+	if start < 0 || start > len(b) {
+		return nil, fmt.Errorf("safeByteRange: %w", errors.New("start index out of range"))
+	}
+	if end < 0 || end > len(b) {
+		return nil, fmt.Errorf("safeByteRange: %w", errors.New("end index out of range"))
+	}
+	if start > end {
+		return nil, fmt.Errorf("safeByteRange: %w", errors.New("start index greater than end index"))
+	}
+	return b[start:end], nil
 }

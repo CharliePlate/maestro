@@ -1,8 +1,6 @@
 package maestro_test
 
 import (
-	"bytes"
-	"encoding/binary"
 	"testing"
 
 	"github.com/charlieplate/maestro"
@@ -193,10 +191,15 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 
 func makeBinaryAuthStream(m maestro.BinaryAuthContentMessage) []byte {
 	b := append([]byte{}, maestro.IntToBytes(m.Version, 4)...)
+	b = append(b, 0x1E)
 	b = append(b, maestro.IntToBytes(m.AuthSize, 4)...)
+	b = append(b, 0x1E)
 	b = append(b, m.Auth...)
+	b = append(b, 0x1E)
 	b = append(b, maestro.IntToBytes(m.ContentSize, 4)...)
+	b = append(b, 0x1E)
 	b = append(b, m.Content...)
+	b = append(b, []byte{0x1E, 0x1E, 0x1E}...)
 	return b
 }
 
@@ -220,40 +223,27 @@ func (ta BinaryAuthTestAuthenticator) Authenticate(data any) (map[string]any, er
 }
 
 type BinaryAuthTestParser struct {
-	Error error
+	ActionType maestro.ActionType
+	ConnID     string
+	Error      error
 }
 
 func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
-	m, _ := data.(maestro.Message)
-
 	if tp.Error != nil {
 		return maestro.Message{}, tp.Error
+	}
+
+	m := maestro.Message{
+		Content:    data,
+		ConnID:     tp.ConnID,
+		ActionType: tp.ActionType,
 	}
 
 	return m, nil
 }
 
-func structToByteArray(v any) []byte {
-	w := &bytes.Buffer{}
-
-	err := binary.Write(w, binary.BigEndian, v)
-	if err != nil {
-		return nil
-	}
-
-	return w.Bytes()
-}
-
-func byteArrayToStruct(b []byte, v any) {
-	r := bytes.NewReader(b)
-	err := binary.Read(r, binary.BigEndian, v)
-	if err != nil {
-		return
-	}
-}
-
 func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
-	validInput := maestro.Message{
+	inputResult := maestro.Message{
 		ConnID:     "conn_id",
 		Content:    []byte("content"),
 		ActionType: maestro.ActionTypeSubscribe,
@@ -270,7 +260,7 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    maestro.Message
+		want    any
 		wantErr error
 	}{
 		{
@@ -281,7 +271,9 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 					Valid: true,
 				},
 				Parser: BinaryAuthTestParser{
-					Error: nil,
+					ActionType: maestro.ActionTypeSubscribe,
+					ConnID:     "conn_id",
+					Error:      nil,
 				},
 			},
 			args: args{
@@ -289,10 +281,12 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 					Version:     1,
 					AuthSize:    4,
 					Auth:        []byte("auth"),
-					ContentSize: len(structToByteArray(validInput)),
-					Content:     structToByteArray(validInput),
+					ContentSize: len([]byte("content")),
+					Content:     []byte("content"),
 				}),
 			},
+			want:    inputResult,
+			wantErr: nil,
 		},
 	}
 	for _, tt := range tests {
