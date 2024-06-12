@@ -224,7 +224,7 @@ type BinaryAuthTestParser struct {
 }
 
 func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
-	m := data.(maestro.Message)
+	m, _ := data.(maestro.Message)
 
 	if tp.Error != nil {
 		return maestro.Message{}, tp.Error
@@ -234,15 +234,14 @@ func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
 }
 
 func structToByteArray(v any) []byte {
-	b := make([]byte, binary.Size(v))
-	w := bytes.NewBuffer(b)
+	w := &bytes.Buffer{}
 
 	err := binary.Write(w, binary.BigEndian, v)
 	if err != nil {
 		return nil
 	}
 
-	return b
+	return w.Bytes()
 }
 
 func byteArrayToStruct(b []byte, v any) {
@@ -277,8 +276,13 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 		{
 			name: "Valid Input",
 			fields: fields{
-				Authenticator: BinaryAuthTestAuthenticator{},
-				Parser:        BinaryAuthTestParser{},
+				Authenticator: BinaryAuthTestAuthenticator{
+					Error: nil,
+					Valid: true,
+				},
+				Parser: BinaryAuthTestParser{
+					Error: nil,
+				},
 			},
 			args: args{
 				data: makeBinaryAuthStream(maestro.BinaryAuthContentMessage{

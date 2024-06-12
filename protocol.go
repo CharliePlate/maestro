@@ -38,7 +38,7 @@ func (au *BinaryAuthContentProtocol) Parse(data any) (Message, error) {
 func (au *BinaryAuthContentProtocol) ParseIncoming(data any) (Message, error) {
 	d, ok := data.([]byte)
 	if !ok {
-		return Message{}, errors.New("invalid data")
+		return Message{}, fmt.Errorf("ParseIncoming: %w", errors.New("invalid data"))
 	}
 
 	acm := BinaryAuthContentMessage{}
@@ -66,7 +66,7 @@ func (au *BinaryAuthContentProtocol) ParseIncoming(data any) (Message, error) {
 		if connIDStr, ok := connID.(string); ok {
 			msg.ConnID = connIDStr
 		} else {
-			return Message{}, errors.New("invalid conn_id")
+			return Message{}, fmt.Errorf("ParseIncoming: %w", errors.New("invalid conn_id"))
 		}
 	}
 
@@ -116,12 +116,12 @@ var ErrUnauthorized = errors.New("unauthorized")
 func (j *JWTAuthenticator) Authenticate(data any) (map[string]any, error) {
 	ts, ok := data.(string)
 	if !ok {
-		return map[string]any{}, errors.New("invalid token")
+		return map[string]any{}, fmt.Errorf("authenticate: %w: %s", ErrUnauthorized, "invalid token")
 	}
 
 	token, err := jwt.Parse(ts, func(token *jwt.Token) (interface{}, error) {
 		if token.Method.Alg() != j.Opts.SigningMethod {
-			return nil, fmt.Errorf("invalid signing method: %s", token.Method.Alg())
+			return nil, fmt.Errorf("%w: %s", ErrUnauthorized, "invalid signing method")
 		}
 
 		return []byte(j.Opts.Secret), nil
