@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/charlieplate/maestro/protocol"
+	"github.com/charlieplate/maestro/experimental/protocol"
 	"github.com/stretchr/testify/require"
 )
 
