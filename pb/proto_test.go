@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/charlieplate/maestro/pb"
-	"github.com/charlieplate/maestro/protocol"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -38,7 +37,7 @@ func unsafeUnmarshalMsg(tm testMsg, content proto.Message) []byte {
 		panic(err)
 	}
 
-	d = append(d, protocol.IntToBytes(len(data), 4)...)
+	d = append(d, pb.IntToBytes(len(data), 4)...)
 	d = append(d, data...)
 
 	return d

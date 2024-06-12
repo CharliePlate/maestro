@@ -7,8 +7,7 @@ import "google/protobuf/any.proto";
 
 message Message {
   string ProtoVersion = 1;
-  string ConnId = 2;
-  google.protobuf.Any Content = 3;
+  google.protobuf.Any Content = 2;
 }
 
 message Subscribe {

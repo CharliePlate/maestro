@@ -111,3 +111,11 @@ func parse(d []byte) ParsedTag {
 
 	return p
 }
+
+func IntToBytes(n int, byteCount int) []byte {
+	b := make([]byte, byteCount)
+	for i := range byteCount {
+		b[byteCount-i-1] = byte(n >> (8 * i) & 0xFF)
+	}
+	return b
+}
