@@ -35,11 +35,11 @@ func (au *BinaryAuthContentProtocol) Parse(data any) (Message, error) {
 	return au.Parser.Parse(data)
 }
 
-func checkNextByteIsSeperator(d []byte, offset int) error {
+func checkSeparator(d []byte, offset int) (int, error) {
 	if d[offset] != 0x1E {
-		return fmt.Errorf("checkNextByteIsSeperator: %w", errors.New("invalid seperator"))
+		return 0, fmt.Errorf("checkNextByteIsSeperator: %w", errors.New("invalid seperator"))
 	}
-	return nil
+	return offset + 1, nil
 }
 
 var ErrInvalidTerminator = errors.New("invalid terminator")
@@ -47,75 +47,72 @@ var ErrInvalidTerminator = errors.New("invalid terminator")
 func (au *BinaryAuthContentProtocol) parseToMessage(d []byte) (BinaryAuthContentMessage, error) {
 	offset := 0
 	acm := BinaryAuthContentMessage{}
+	var err error
+
 	ver, err := safeByteRange(d, offset, 4)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: failed to read version: %w", err)
 	}
 	acm.Version = int(binary.BigEndian.Uint32(ver))
 	offset += 4
 
-	if err = checkNextByteIsSeperator(d, offset); err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	if offset, err = checkSeparator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, err
 	}
-	offset++
 
 	as, err := safeByteRange(d, offset, offset+4)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: failed to read auth size: %w", err)
 	}
-
 	acm.AuthSize = int(binary.BigEndian.Uint32(as))
-
 	offset += 4
-	if err = checkNextByteIsSeperator(d, offset); err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+
+	if offset, err = checkSeparator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, err
 	}
-	offset++
 
 	auth, err := safeByteRange(d, offset, offset+acm.AuthSize)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: failed to read auth: %w", err)
 	}
 	acm.Auth = auth
 	offset += acm.AuthSize
 
-	if err = checkNextByteIsSeperator(d, offset); err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	if offset, err = checkSeparator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, err
 	}
-	offset++
 
 	cs, err := safeByteRange(d, offset, offset+4)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: failed to read content size: %w", err)
 	}
 	acm.ContentSize = int(binary.BigEndian.Uint32(cs))
 	offset += 4
 
-	if err = checkNextByteIsSeperator(d, offset); err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+	if offset, err = checkSeparator(d, offset); err != nil {
+		return BinaryAuthContentMessage{}, err
 	}
-	offset++
 
 	content, err := safeByteRange(d, offset, offset+acm.ContentSize)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", err)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: failed to read content: %w", err)
 	}
 	acm.Content = content
 	offset += acm.ContentSize
 
 	term, err := safeByteRange(d, offset, offset+3)
 	if err != nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", ErrInvalidTerminator)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: could not read terminator: %w", ErrInvalidTerminator)
 	}
 	offset += 3
 
 	if _, isNotEOF := safeByteRange(d, offset, offset+1); isNotEOF == nil {
-		return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w - unexpected data", ErrInvalidTerminator)
+		return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: unexpected data after terminator: %w", ErrInvalidTerminator)
 	}
 
 	for _, b := range term {
 		if b != 0x1E {
-			return BinaryAuthContentMessage{}, fmt.Errorf("ParseIncoming: %w", ErrInvalidTerminator)
+			return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: invalid character in terminator: %w", ErrInvalidTerminator)
 		}
 	}
 
