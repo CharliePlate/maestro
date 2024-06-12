@@ -3,6 +3,7 @@ module github.com/charlieplate/maestro
 go 1.22.2
 
 require (
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.5
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.9.0
