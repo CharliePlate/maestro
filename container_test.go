@@ -1,0 +1,252 @@
+package maestro_test
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/charlieplate/maestro"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewSliceContainer(t *testing.T) {
+	tests := []struct {
+		name string
+		want *maestro.SliceContainer
+	}{
+		{
+			name: "Implements Container Interface",
+			want: &maestro.SliceContainer{
+				Elements: []maestro.QueueItem{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, maestro.NewSliceContainer())
+			require.Implements(t, (*maestro.Container)(nil), maestro.NewSliceContainer())
+		})
+	}
+}
+
+type TestQueueItem struct {
+	SetID   string
+	SetData string
+}
+
+func (t *TestQueueItem) ID() string {
+	return t.SetID
+}
+
+func (t *TestQueueItem) Data() any {
+	return t.SetData
+}
+
+func TestSliceContainer_Push(t *testing.T) {
+	type fields struct {
+		elements []maestro.QueueItem
+	}
+	type args struct {
+		item maestro.QueueItem
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []maestro.QueueItem
+	}{
+		{
+			name: "Push Item",
+			fields: fields{
+				elements: []maestro.QueueItem{},
+			},
+			args: args{
+				item: testQueueItem(0),
+			},
+			want: []maestro.QueueItem{
+				testQueueItem(0),
+			},
+		},
+		{
+			name: "Push Item to Non-Empty Container",
+			fields: fields{
+				elements: []maestro.QueueItem{
+					testQueueItem(0),
+				},
+			},
+			args: args{
+				item: testQueueItem(1),
+			},
+			want: makeTestQueueItems(2),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := &maestro.SliceContainer{
+				Elements: tt.fields.elements,
+			}
+			sc.Push(tt.args.item)
+
+			require.Equal(t, tt.want, sc.Elements, "Push() did not add item to container")
+		})
+	}
+}
+
+func TestSliceContainer_Pop(t *testing.T) {
+	type fields struct {
+		elements []maestro.QueueItem
+	}
+	tests := []struct {
+		name          string
+		fields        fields
+		want          maestro.QueueItem
+		expectedItems []maestro.QueueItem
+		expectedError error
+	}{
+		{
+			name: "Pop From Container with 1 Element",
+			fields: fields{
+				elements: []maestro.QueueItem{
+					testQueueItem(0),
+				},
+			},
+			want:          testQueueItem(0),
+			expectedItems: []maestro.QueueItem{},
+			expectedError: nil,
+		},
+		{
+			name: "Pop From Container with Multiple Elements",
+			fields: fields{
+				elements: makeTestQueueItems(2),
+			},
+			want: testQueueItem(0),
+			expectedItems: []maestro.QueueItem{
+				testQueueItem(1),
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Pop From Empty Container",
+			fields: fields{
+				elements: []maestro.QueueItem{},
+			},
+			want:          nil,
+			expectedItems: []maestro.QueueItem{},
+			expectedError: maestro.ErrQueueEmpty,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := &maestro.SliceContainer{
+				Elements: tt.fields.elements,
+			}
+			item, err := sc.Pop()
+			require.Equal(t, tt.expectedItems, sc.Elements, "Unexpected items in container after Pop()")
+			require.Equal(t, tt.expectedError, err, "Pop() did not return the expected error")
+			require.Equal(t, tt.want, item, "Pop() did not return the expected item")
+		})
+	}
+}
+
+func TestSliceContainer_Len(t *testing.T) {
+	type fields struct {
+		elements []maestro.QueueItem
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   int
+	}{
+		{
+			name: "Empty Container",
+			fields: fields{
+				elements: []maestro.QueueItem{},
+			},
+			want: 0,
+		},
+		{
+			name: "Container with 1 Element",
+			fields: fields{
+				elements: []maestro.QueueItem{
+					&TestQueueItem{SetID: "testID", SetData: "testData"},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := &maestro.SliceContainer{
+				Elements: tt.fields.elements,
+			}
+			if got := sc.Len(); got != tt.want {
+				t.Errorf("SliceContainer.Len() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+//
+// func TestSliceContainer_Items(t *testing.T) {
+// 	type fields struct {
+// 		elements []maestro.QueueItem
+// 	}
+// 	tests := []struct {
+// 		name   string
+// 		fields fields
+// 		want   []maestro.QueueItem
+// 	}{
+// 		// TODO: Add test cases.
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			sc := &maestro.SliceContainer{
+// 				Elements: tt.fields.elements,
+// 			}
+// 			if got := sc.Items(); !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("SliceContainer.Items() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
+//
+// func TestSliceContainer_Find(t *testing.T) {
+// 	type fields struct {
+// 		elements []maestro.QueueItem
+// 	}
+// 	type args struct {
+// 		id string
+// 	}
+// 	tests := []struct {
+// 		name   string
+// 		fields fields
+// 		args   args
+// 		want   maestro.QueueItem
+// 	}{
+// 		// TODO: Add test cases.
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			sc := &maestro.SliceContainer{
+// 				Elements: tt.fields.elements,
+// 			}
+// 			if got := sc.Find(tt.args.id); !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("SliceContainer.Find() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
+
+func makeTestQueueItems(count int) []maestro.QueueItem {
+	items := []maestro.QueueItem{}
+
+	for i := range count {
+		items = append(items,
+			&TestQueueItem{SetID: fmt.Sprintf("testId%d", i), SetData: fmt.Sprintf("testData%d", i)},
+		)
+	}
+
+	return items
+}
+
+func testQueueItem(idx int) maestro.QueueItem {
+	return &TestQueueItem{SetID: fmt.Sprintf("testId%d", idx), SetData: fmt.Sprintf("testData%d", idx)}
+}
