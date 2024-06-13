@@ -10,8 +10,8 @@ import (
 
 func TestNewSliceContainer(t *testing.T) {
 	tests := []struct {
-		name string
 		want *maestro.SliceContainer
+		name string
 	}{
 		{
 			name: "Implements Container Interface",
@@ -96,11 +96,11 @@ func TestSliceContainer_Pop(t *testing.T) {
 		elements []maestro.QueueItem
 	}
 	tests := []struct {
+		want          maestro.QueueItem
+		expectedError error
 		name          string
 		fields        fields
-		want          maestro.QueueItem
 		expectedItems []maestro.QueueItem
-		expectedError error
 	}{
 		{
 			name: "Pop From Container with 1 Element",
