@@ -170,6 +170,7 @@ func TestSliceContainer_Len(t *testing.T) {
 					&TestQueueItem{SetID: "testID", SetData: "testData"},
 				},
 			},
+			want: 1,
 		},
 	}
 	for _, tt := range tests {
