@@ -5,20 +5,24 @@ import (
 
 	"github.com/charlieplate/maestro"
 	"github.com/golang-jwt/jwt"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type TestAuthenticator struct {
-	Error error
+	Error  error
+	Claims map[string]any
+	ConnID string
 }
 
-func (ta *TestAuthenticator) Authenticate(data any) (map[string]any, error) {
+func (ta *TestAuthenticator) Authenticate(_ any) (maestro.AuthInfo, error) {
 	if ta.Error != nil {
-		return nil, ta.Error
+		return maestro.AuthInfo{}, ta.Error
 	}
 
-	return map[string]any{
-		"auth": data,
+	return maestro.AuthInfo{
+		ConnID: ta.ConnID,
+		Claims: ta.Claims,
 	}, nil
 }
 
@@ -35,6 +39,7 @@ func TestNewNilAuthenticator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, maestro.NewNilAuthenticator())
+			require.Implements(t, (*maestro.Authenticator)(nil), tt.want, "NilAuthenticator does not implement Authenticator")
 		})
 	}
 }
@@ -66,8 +71,10 @@ func TestNilAuthenticator_Authenticate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			na := &maestro.NilAuthenticator{}
-			if err := na.Authenticate(tt.args.any); err != nil {
-				require.Equal(t, tt.wantErr, err)
+			if info, err := na.Authenticate(tt.args.any); err != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.Equal(t, maestro.AuthInfo{}, info)
 			}
 		})
 	}
@@ -100,15 +107,17 @@ func TestNewJWTAuthenticator(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, maestro.NewJWTAuthenticator(tt.args.opts))
+			assert.Equal(t, tt.want, maestro.NewJWTAuthenticator(tt.args.opts))
+			assert.Implements(t, (*maestro.Authenticator)(nil), tt.want, "NilAuthenticator does not implement Authenticator")
 		})
 	}
 }
 
 func TestJWTAuthenticator_Authenticate(t *testing.T) {
 	validToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  "1234567890",
-		"name": "John Doe",
+		"sub":     "1234567890",
+		"name":    "John Doe",
+		"conn_id": "1234567890",
 	})
 	validTokenString, _ := validToken.SignedString([]byte("secret"))
 
@@ -122,7 +131,7 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 		args    args
 		wantErr error
 		fields  fields
-		want    map[string]any
+		want    maestro.AuthInfo
 		name    string
 	}{
 		{
@@ -138,9 +147,13 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 			args: args{
 				data: validTokenString,
 			},
-			want: map[string]any{
-				"sub":  "1234567890",
-				"name": "John Doe",
+			want: maestro.AuthInfo{
+				Claims: map[string]any{
+					"name":    "John Doe",
+					"sub":     "1234567890",
+					"conn_id": "1234567890",
+				},
+				ConnID: "1234567890",
 			},
 			wantErr: nil,
 		},
@@ -157,7 +170,7 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 			args: args{
 				data: validTokenString,
 			},
-			want:    map[string]any{},
+			want:    maestro.AuthInfo{},
 			wantErr: maestro.ErrUnauthorized,
 		},
 		{
@@ -173,7 +186,7 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 			args: args{
 				data: "invalid token",
 			},
-			want:    map[string]any{},
+			want:    maestro.AuthInfo{},
 			wantErr: maestro.ErrUnauthorized,
 		},
 	}
@@ -184,7 +197,7 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 			}
 			got, err := jwt.Authenticate(tt.args.data)
 			require.ErrorIs(t, err, tt.wantErr)
-			require.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -204,28 +217,28 @@ func makeBinaryAuthStream(m maestro.BinaryAuthContentMessage) []byte {
 }
 
 type BinaryAuthTestAuthenticator struct {
-	Error error
-	Valid bool
+	Error  error
+	ConnID string
+	Valid  bool
 }
 
-func (ta BinaryAuthTestAuthenticator) Authenticate(data any) (map[string]any, error) {
+func (ta BinaryAuthTestAuthenticator) Authenticate(any) (maestro.AuthInfo, error) {
 	if ta.Error != nil {
-		return nil, ta.Error
+		return maestro.AuthInfo{}, ta.Error
 	}
 
 	if !ta.Valid {
-		return nil, maestro.ErrUnauthorized
+		return maestro.AuthInfo{}, maestro.ErrUnauthorized
 	}
 
-	return map[string]any{
-		"auth": data,
+	return maestro.AuthInfo{
+		ConnID: ta.ConnID,
 	}, nil
 }
 
 type BinaryAuthTestParser struct {
 	Error      error
 	ActionType maestro.ActionType
-	ConnID     string
 }
 
 func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
@@ -235,7 +248,7 @@ func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
 
 	m := maestro.Message{
 		Content:    data,
-		ConnID:     tp.ConnID,
+		ConnID:     "",
 		ActionType: tp.ActionType,
 	}
 
@@ -243,12 +256,6 @@ func (tp BinaryAuthTestParser) Parse(data any) (maestro.Message, error) {
 }
 
 func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
-	inputResult := maestro.Message{
-		ConnID:     "conn_id",
-		Content:    []byte("content"),
-		ActionType: maestro.ActionTypeSubscribe,
-	}
-
 	type fields struct {
 		Authenticator maestro.Authenticator
 		Parser        maestro.Parser
@@ -267,12 +274,12 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 			name: "Valid Input",
 			fields: fields{
 				Authenticator: BinaryAuthTestAuthenticator{
-					Error: nil,
-					Valid: true,
+					Error:  nil,
+					Valid:  true,
+					ConnID: "12345",
 				},
 				Parser: BinaryAuthTestParser{
 					ActionType: maestro.ActionTypeSubscribe,
-					ConnID:     "conn_id",
 					Error:      nil,
 				},
 			},
@@ -285,19 +292,19 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 					Content:     []byte("content"),
 				}),
 			},
-			want:    inputResult,
+			want:    maestro.Message{Content: []byte("content"), ActionType: maestro.ActionTypeSubscribe, ConnID: "12345"},
 			wantErr: nil,
 		},
 		{
 			name: "Invalid Terminator",
 			fields: fields{
 				Authenticator: BinaryAuthTestAuthenticator{
-					Error: nil,
-					Valid: true,
+					Error:  nil,
+					Valid:  true,
+					ConnID: "conn_id",
 				},
 				Parser: BinaryAuthTestParser{
 					ActionType: maestro.ActionTypeSubscribe,
-					ConnID:     "conn_id",
 					Error:      nil,
 				},
 			},
@@ -322,7 +329,7 @@ func TestBinaryAuthContentProtocol_ParseIncoming(t *testing.T) {
 			}
 			got, err := au.ParseIncoming(tt.args.data)
 			require.ErrorIs(t, err, tt.wantErr)
-			require.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

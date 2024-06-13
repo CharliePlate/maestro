@@ -1,7 +1,6 @@
 package pb
 
 import (
-	"encoding/binary"
 	"errors"
 	"regexp"
 	"strconv"
@@ -16,25 +15,27 @@ const (
 	MsgTypeSubscribe = "Subscribe"
 )
 
-type ParsedTag struct {
-	Data          []byte
-	Version       int
-	ContentLength int
+type ProtobufParser struct{}
+
+var registry = map[string]string{}
+
+func NewProtobufParser() *ProtobufParser {
+	return &ProtobufParser{}
 }
 
-type ProtobufDecoder struct{}
-
 // Returns the message, the type of the message, and an error
-func (pbd *ProtobufDecoder) ParseIncoming(data []byte) (maestro.Message, error) {
-	d := parse(data)
+func (pbd *ProtobufParser) Parse(data any) (maestro.Message, error) {
+	d, ok := data.([]byte)
+	if !ok {
+		return maestro.Message{}, errors.New("invalid data type")
+	}
 
-	msg, err := unmarshalMessage(d.Data)
+	msg, err := unmarshalMessage(d)
 	if err != nil {
 		return maestro.Message{}, err
 	}
 
 	m := maestro.Message{
-		ConnID:     msg.GetConnId(),
 		Content:    nil,
 		ActionType: "",
 	}
@@ -42,16 +43,22 @@ func (pbd *ProtobufDecoder) ParseIncoming(data []byte) (maestro.Message, error) 
 	if err = validProtoVersion(msg.GetProtoVersion()); err != nil {
 		return m, err
 	}
-
 	c := msg.GetContent()
-	msgType, err := protoregistry.GlobalTypes.FindMessageByURL(c.GetTypeUrl())
-	if err != nil {
-		return m, err
+
+	var msgType string
+	if mt, ok := registry[c.GetTypeUrl()]; !ok {
+		t, readErr := protoregistry.GlobalTypes.FindMessageByURL(c.GetTypeUrl())
+		if readErr != nil {
+			return m, readErr
+		}
+
+		msgType = string(t.Descriptor().Name())
+		registry[c.GetTypeUrl()] = msgType
+	} else {
+		msgType = mt
 	}
 
-	t := msgType.Descriptor().Name()
-
-	switch t {
+	switch msgType {
 	case MsgTypeSubscribe:
 		m.ActionType = maestro.ActionTypeSubscribe
 		sub := &Subscribe{}
@@ -100,16 +107,6 @@ func validProtoVersion(v string) error {
 		}
 	}
 	return nil
-}
-
-func parse(d []byte) ParsedTag {
-	p := ParsedTag{}
-
-	p.Version = int(binary.BigEndian.Uint16(d[:4]))
-	p.ContentLength = int(binary.BigEndian.Uint16(d[4:8]))
-	p.Data = d[8:]
-
-	return p
 }
 
 func IntToBytes(n int, byteCount int) []byte {
