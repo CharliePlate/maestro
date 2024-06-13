@@ -25,7 +25,7 @@ type Container interface {
 	Push(item QueueItem)
 	Pop() (QueueItem, error)
 	Len() int
-	Items() ([]QueueItem, error)
+	Items() []QueueItem
 	Find(id string) (QueueItem, error)
 }
 
@@ -68,12 +68,13 @@ func (sc *SliceContainer) Len() int {
 	return len(sc.Elements)
 }
 
-func (sc *SliceContainer) Items() ([]QueueItem, error) {
-	if len(sc.Elements) == 0 {
-		return []QueueItem{}, ErrQueueEmpty
+func (sc *SliceContainer) Items() []QueueItem {
+	// this should never happen but... just in case
+	if sc.Elements == nil {
+		return []QueueItem{}
 	}
 
-	return sc.Elements, nil
+	return sc.Elements
 }
 
 func (sc *SliceContainer) Find(id string) (QueueItem, error) {

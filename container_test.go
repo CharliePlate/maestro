@@ -185,56 +185,91 @@ func TestSliceContainer_Len(t *testing.T) {
 	}
 }
 
-//
-// func TestSliceContainer_Items(t *testing.T) {
-// 	type fields struct {
-// 		elements []maestro.QueueItem
-// 	}
-// 	tests := []struct {
-// 		name   string
-// 		fields fields
-// 		want   []maestro.QueueItem
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			sc := &maestro.SliceContainer{
-// 				Elements: tt.fields.elements,
-// 			}
-// 			if got := sc.Items(); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("SliceContainer.Items() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
-//
-// func TestSliceContainer_Find(t *testing.T) {
-// 	type fields struct {
-// 		elements []maestro.QueueItem
-// 	}
-// 	type args struct {
-// 		id string
-// 	}
-// 	tests := []struct {
-// 		name   string
-// 		fields fields
-// 		args   args
-// 		want   maestro.QueueItem
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			sc := &maestro.SliceContainer{
-// 				Elements: tt.fields.elements,
-// 			}
-// 			if got := sc.Find(tt.args.id); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("SliceContainer.Find() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func TestSliceContainer_Items(t *testing.T) {
+	type fields struct {
+		elements []maestro.QueueItem
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   []maestro.QueueItem
+	}{
+		{
+			name: "Empty Container",
+			fields: fields{
+				elements: []maestro.QueueItem{},
+			},
+			want: []maestro.QueueItem{},
+		},
+		{
+			name: "Container with Data",
+			fields: fields{
+				elements: makeTestQueueItems(5),
+			},
+			want: makeTestQueueItems(5),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := &maestro.SliceContainer{}
+
+			for _, item := range tt.fields.elements {
+				sc.Push(item)
+			}
+
+			require.Equal(t, tt.want, sc.Items(), "Items() did not return the expected items")
+		})
+	}
+}
+
+func TestSliceContainer_Find(t *testing.T) {
+	type fields struct {
+		elements []maestro.QueueItem
+	}
+	type args struct {
+		id string
+	}
+	tests := []struct {
+		name          string
+		fields        fields
+		args          args
+		want          maestro.QueueItem
+		expectedError error
+	}{
+		{
+			name: "Find Item",
+			fields: fields{
+				elements: makeTestQueueItems(5),
+			},
+			args: args{
+				id: testQueueItem(3).ID(),
+			},
+			want:          testQueueItem(3),
+			expectedError: nil,
+		},
+		{
+			name: "Find Item Not Found",
+			fields: fields{
+				elements: makeTestQueueItems(5),
+			},
+			args: args{
+				id: "notFound",
+			},
+			want:          nil,
+			expectedError: maestro.ErrItemNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := &maestro.SliceContainer{
+				Elements: tt.fields.elements,
+			}
+			item, err := sc.Find(tt.args.id)
+			require.Equal(t, tt.want, item, "Find() did not return the expected item")
+			require.Equal(t, tt.expectedError, err, "Find() did not return the expected error")
+		})
+	}
+}
 
 func makeTestQueueItems(count int) []maestro.QueueItem {
 	items := []maestro.QueueItem{}
