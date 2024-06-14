@@ -204,15 +204,15 @@ func TestJWTAuthenticator_Authenticate(t *testing.T) {
 
 func makeBinaryAuthStream(m maestro.BinaryAuthContentMessage) []byte {
 	b := append([]byte{}, maestro.IntToBytes(m.Version, 4)...)
-	b = append(b, 0x1E)
+	b = append(b, maestro.SeparatorByte)
 	b = append(b, maestro.IntToBytes(m.AuthSize, 4)...)
-	b = append(b, 0x1E)
+	b = append(b, maestro.SeparatorByte)
 	b = append(b, m.Auth...)
-	b = append(b, 0x1E)
+	b = append(b, maestro.SeparatorByte)
 	b = append(b, maestro.IntToBytes(m.ContentSize, 4)...)
-	b = append(b, 0x1E)
+	b = append(b, maestro.SeparatorByte)
 	b = append(b, m.Content...)
-	b = append(b, []byte{0x1E, 0x1E, 0x1E}...)
+	b = append(b, []byte{maestro.SeparatorByte, maestro.SeparatorByte, maestro.SeparatorByte}...)
 	return b
 }
 

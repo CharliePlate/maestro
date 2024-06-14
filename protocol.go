@@ -32,6 +32,8 @@ type AuthInfo struct {
 	ConnID string
 }
 
+const SeparatorByte = 0x1E
+
 func (au *BinaryAuthContentProtocol) Authenticate(m AuthInfo) (AuthInfo, error) {
 	return au.Authenticator.Authenticate(m)
 }
@@ -41,7 +43,7 @@ func (au *BinaryAuthContentProtocol) Parse(data any) (Message, error) {
 }
 
 func checkSeparator(d []byte, offset int) (int, error) {
-	if d[offset] != 0x1E {
+	if d[offset] != SeparatorByte {
 		return 0, fmt.Errorf("checkNextByteIsSeperator: %w", errors.New("invalid seperator"))
 	}
 	return offset + 1, nil
@@ -116,7 +118,7 @@ func (au *BinaryAuthContentProtocol) parseToMessage(d []byte) (BinaryAuthContent
 	}
 
 	for _, b := range term {
-		if b != 0x1E {
+		if b != SeparatorByte {
 			return BinaryAuthContentMessage{}, fmt.Errorf("parseToMessage: invalid character in terminator: %w", ErrInvalidTerminator)
 		}
 	}
