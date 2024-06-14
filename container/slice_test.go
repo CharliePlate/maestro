@@ -1,29 +1,30 @@
-package maestro_test
+package container_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/charlieplate/maestro"
+	"github.com/charlieplate/maestro/container"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewSliceContainer(t *testing.T) {
 	tests := []struct {
-		want *maestro.SliceContainer
+		want *container.SliceContainer
 		name string
 	}{
 		{
 			name: "Implements Container Interface",
-			want: &maestro.SliceContainer{
+			want: &container.SliceContainer{
 				Elements: []maestro.QueueItem{},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, maestro.NewSliceContainer())
-			require.Implements(t, (*maestro.Container)(nil), maestro.NewSliceContainer())
+			require.Equal(t, tt.want, container.NewSliceContainer())
+			require.Implements(t, (*maestro.Container)(nil), container.NewSliceContainer())
 		})
 	}
 }
@@ -81,7 +82,7 @@ func TestSliceContainer_Push(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &maestro.SliceContainer{
+			sc := &container.SliceContainer{
 				Elements: tt.fields.elements,
 			}
 			sc.Push(tt.args.item)
@@ -131,12 +132,12 @@ func TestSliceContainer_Pop(t *testing.T) {
 			},
 			want:          nil,
 			expectedItems: []maestro.QueueItem{},
-			expectedError: maestro.ErrQueueEmpty,
+			expectedError: container.ErrQueueEmpty,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &maestro.SliceContainer{
+			sc := &container.SliceContainer{
 				Elements: tt.fields.elements,
 			}
 			item, err := sc.Pop()
@@ -175,7 +176,7 @@ func TestSliceContainer_Len(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &maestro.SliceContainer{
+			sc := &container.SliceContainer{
 				Elements: tt.fields.elements,
 			}
 			if got := sc.Len(); got != tt.want {
@@ -211,7 +212,7 @@ func TestSliceContainer_Items(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &maestro.SliceContainer{}
+			sc := &container.SliceContainer{}
 
 			for _, item := range tt.fields.elements {
 				sc.Push(item)
@@ -230,11 +231,11 @@ func TestSliceContainer_Find(t *testing.T) {
 		id string
 	}
 	tests := []struct {
-		name          string
-		fields        fields
-		args          args
 		want          maestro.QueueItem
 		expectedError error
+		name          string
+		args          args
+		fields        fields
 	}{
 		{
 			name: "Find Item",
@@ -256,12 +257,12 @@ func TestSliceContainer_Find(t *testing.T) {
 				id: "notFound",
 			},
 			want:          nil,
-			expectedError: maestro.ErrItemNotFound,
+			expectedError: container.ErrItemNotFound,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &maestro.SliceContainer{
+			sc := &container.SliceContainer{
 				Elements: tt.fields.elements,
 			}
 			item, err := sc.Find(tt.args.id)
