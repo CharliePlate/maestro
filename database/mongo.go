@@ -18,7 +18,6 @@ type MongoProcesser struct {
 	database   *mongo.Database
 	collection *mongo.Collection
 	opts       MongoProcessorOpts
-	handler    maestro.QueueHandler
 }
 
 type MongoProcessorOpts struct {

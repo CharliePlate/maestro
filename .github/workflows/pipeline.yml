@@ -2,7 +2,8 @@ name: Go
 
 on:
   push:
-    branches: [ "develop", "main" ]
+    paths:
+      - '**.go'
   pull_request:
     branches: [ "develop", "main" ]
 
@@ -10,6 +11,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+    - name: Start MongoDB
+      uses: supercharge/mongodb-github-action@1.10.0
+      with:
+        mongodb-replica-set: test-rs
+
     - uses: actions/checkout@v4
 
     - name: Set up Go
