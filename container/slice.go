@@ -2,6 +2,7 @@ package container
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/charlieplate/maestro"
 )
@@ -61,4 +62,24 @@ func (sc *SliceContainer) Find(id string) (maestro.QueueItem, error) {
 		}
 	}
 	return nil, ErrItemNotFound
+}
+
+func (sc *SliceContainer) Delete(id string) error {
+	idx, err := sc.findIndexByID(id)
+	if err != nil {
+		return fmt.Errorf("error deleting id %s: %w", id, err)
+	}
+
+	sc.Elements = append(sc.Elements[:idx], sc.Elements[idx+1:]...)
+	return nil
+}
+
+func (sc *SliceContainer) findIndexByID(id string) (int, error) {
+	for i, item := range sc.Elements {
+		if item.ID() == id {
+			return i, nil
+		}
+	}
+
+	return -1, ErrItemNotFound
 }

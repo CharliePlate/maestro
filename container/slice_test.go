@@ -30,16 +30,24 @@ func TestNewSliceContainer(t *testing.T) {
 }
 
 type TestQueueItem struct {
-	SetID   string
-	SetData string
+	IDVal   string
+	DataVal string
 }
 
 func (t *TestQueueItem) ID() string {
-	return t.SetID
+	return t.IDVal
 }
 
 func (t *TestQueueItem) Data() any {
-	return t.SetData
+	return t.DataVal
+}
+
+func (t *TestQueueItem) SetID(id string) {
+	t.IDVal = id
+}
+
+func (t *TestQueueItem) SetData(data any) {
+	t.DataVal = data.(string)
 }
 
 func TestSliceContainer_Push(t *testing.T) {
@@ -168,7 +176,7 @@ func TestSliceContainer_Len(t *testing.T) {
 			name: "Container with 1 Element",
 			fields: fields{
 				elements: []maestro.QueueItem{
-					&TestQueueItem{SetID: "testID", SetData: "testData"},
+					&TestQueueItem{IDVal: "testID", DataVal: "testData"},
 				},
 			},
 			want: 1,
@@ -272,12 +280,65 @@ func TestSliceContainer_Find(t *testing.T) {
 	}
 }
 
+func TestSliceContainer_Delete(t *testing.T) {
+	type fields struct {
+		Elements []maestro.QueueItem
+	}
+	type args struct {
+		id string
+	}
+	tests := []struct {
+		want          []maestro.QueueItem
+		name          string
+		fields        fields
+		args          args
+		expectedError error
+	}{
+		{
+			name: "Valid Delete",
+			fields: fields{
+				Elements: makeTestQueueItems(2),
+			},
+			args: args{
+				id: testQueueItem(1).ID(),
+			},
+			expectedError: nil,
+			want: []maestro.QueueItem{
+				testQueueItem(0),
+			},
+		},
+		{
+			name: "Delete With Empty Container",
+			fields: fields{
+				Elements: []maestro.QueueItem{},
+			},
+			args: args{
+				id: testQueueItem(1).ID(),
+			},
+			expectedError: container.ErrItemNotFound,
+			want:          []maestro.QueueItem{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := container.SliceContainer{
+				Elements: tt.fields.Elements,
+			}
+			err := sc.Delete(tt.args.id)
+			if err != nil {
+				require.ErrorIs(t, err, container.ErrItemNotFound, "Delete() did not return the expected error")
+			}
+			require.Equal(t, tt.want, sc.Elements)
+		})
+	}
+}
+
 func makeTestQueueItems(count int) []maestro.QueueItem {
 	items := []maestro.QueueItem{}
 
 	for i := range count {
 		items = append(items,
-			&TestQueueItem{SetID: fmt.Sprintf("testId%d", i), SetData: fmt.Sprintf("testData%d", i)},
+			&TestQueueItem{IDVal: fmt.Sprintf("testId%d", i), DataVal: fmt.Sprintf("testData%d", i)},
 		)
 	}
 
@@ -285,5 +346,5 @@ func makeTestQueueItems(count int) []maestro.QueueItem {
 }
 
 func testQueueItem(idx int) maestro.QueueItem {
-	return &TestQueueItem{SetID: fmt.Sprintf("testId%d", idx), SetData: fmt.Sprintf("testData%d", idx)}
+	return &TestQueueItem{IDVal: fmt.Sprintf("testId%d", idx), DataVal: fmt.Sprintf("testData%d", idx)}
 }

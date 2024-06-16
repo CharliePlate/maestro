@@ -43,15 +43,31 @@ func (q *Queue) Run(ctx context.Context) error {
 }
 
 type QueueUpdateMessage struct {
-	Data   any
-	ID     string
-	OpType OpType
+	Content any
+	MsgID   string
+	OpType  OpType
+}
+
+func (qu *QueueUpdateMessage) ID() string {
+	return qu.MsgID
+}
+
+func (qu *QueueUpdateMessage) Data() interface{} {
+	return qu.Content
+}
+
+func (qu *QueueUpdateMessage) SetID(id string) {
+	qu.MsgID = id
+}
+
+func (qu *QueueUpdateMessage) SetData(data interface{}) {
+	qu.Content = data
 }
 
 type QueueHandler interface {
 	Handle(m *QueueUpdateMessage, errChan chan error)
 	SetContainer(c Container)
-	Container() (*Container, error)
+	Container() *Container
 }
 
 type Receiver interface {
@@ -61,6 +77,8 @@ type Receiver interface {
 type QueueItem interface {
 	ID() string
 	Data() interface{}
+	SetID(id string)
+	SetData(data interface{})
 }
 
 type Container interface {
@@ -69,6 +87,7 @@ type Container interface {
 	Len() int
 	Items() []QueueItem
 	Find(id string) (QueueItem, error)
+	Delete(id string) error
 }
 
 type OpType int
