@@ -277,7 +277,7 @@ func TestSliceContainer_Find(t *testing.T) {
 
 			item, err := sc.Find(tt.args.id)
 			require.Equal(t, tt.want, item, "Find() did not return the expected item")
-			require.Equal(t, tt.expectedError, err, "Find() did not return the expected error")
+			require.ErrorIs(t, err, tt.expectedError, "Find() did not return the expected error")
 		})
 	}
 }
