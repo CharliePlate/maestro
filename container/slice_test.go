@@ -16,14 +16,11 @@ func TestNewSliceContainer(t *testing.T) {
 	}{
 		{
 			name: "Implements Container Interface",
-			want: &container.SliceContainer{
-				Elements: []maestro.QueueItem{},
-			},
+			want: &container.SliceContainer{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, container.NewSliceContainer())
 			require.Implements(t, (*maestro.Container)(nil), container.NewSliceContainer())
 		})
 	}
@@ -47,7 +44,12 @@ func (t *TestQueueItem) SetID(id string) {
 }
 
 func (t *TestQueueItem) SetData(data any) {
-	t.DataVal = data.(string)
+	dv, ok := data.(string)
+	if !ok {
+		panic("invalid type")
+	}
+
+	t.DataVal = dv
 }
 
 func TestSliceContainer_Push(t *testing.T) {
@@ -90,12 +92,12 @@ func TestSliceContainer_Push(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &container.SliceContainer{
-				Elements: tt.fields.elements,
-			}
+			sc := &container.SliceContainer{}
+			pushElements(sc, tt.fields.elements)
+
 			sc.Push(tt.args.item)
 
-			require.Equal(t, tt.want, sc.Elements, "Push() did not add item to container")
+			require.Equal(t, tt.want, sc.Items(), "Push() did not add item to container")
 		})
 	}
 }
@@ -123,7 +125,7 @@ func TestSliceContainer_Pop(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name: "Pop From Container with Multiple Elements",
+			name: "Pop From Container with Multiple elements",
 			fields: fields{
 				elements: makeTestQueueItems(2),
 			},
@@ -145,11 +147,11 @@ func TestSliceContainer_Pop(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &container.SliceContainer{
-				Elements: tt.fields.elements,
-			}
+			sc := &container.SliceContainer{}
+			pushElements(sc, tt.fields.elements)
+
 			item, err := sc.Pop()
-			require.Equal(t, tt.expectedItems, sc.Elements, "Unexpected items in container after Pop()")
+			require.Equal(t, tt.expectedItems, sc.Items(), "Unexpected items in container after Pop()")
 			require.Equal(t, tt.expectedError, err, "Pop() did not return the expected error")
 			require.Equal(t, tt.want, item, "Pop() did not return the expected item")
 		})
@@ -184,9 +186,9 @@ func TestSliceContainer_Len(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &container.SliceContainer{
-				Elements: tt.fields.elements,
-			}
+			sc := &container.SliceContainer{}
+			pushElements(sc, tt.fields.elements)
+
 			if got := sc.Len(); got != tt.want {
 				t.Errorf("SliceContainer.Len() = %v, want %v", got, tt.want)
 			}
@@ -270,9 +272,9 @@ func TestSliceContainer_Find(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := &container.SliceContainer{
-				Elements: tt.fields.elements,
-			}
+			sc := &container.SliceContainer{}
+			pushElements(sc, tt.fields.elements)
+
 			item, err := sc.Find(tt.args.id)
 			require.Equal(t, tt.want, item, "Find() did not return the expected item")
 			require.Equal(t, tt.expectedError, err, "Find() did not return the expected error")
@@ -282,22 +284,22 @@ func TestSliceContainer_Find(t *testing.T) {
 
 func TestSliceContainer_Delete(t *testing.T) {
 	type fields struct {
-		Elements []maestro.QueueItem
+		elements []maestro.QueueItem
 	}
 	type args struct {
 		id string
 	}
 	tests := []struct {
-		want          []maestro.QueueItem
-		name          string
-		fields        fields
-		args          args
 		expectedError error
+		name          string
+		args          args
+		want          []maestro.QueueItem
+		fields        fields
 	}{
 		{
 			name: "Valid Delete",
 			fields: fields{
-				Elements: makeTestQueueItems(2),
+				elements: makeTestQueueItems(2),
 			},
 			args: args{
 				id: testQueueItem(1).ID(),
@@ -310,7 +312,7 @@ func TestSliceContainer_Delete(t *testing.T) {
 		{
 			name: "Delete With Empty Container",
 			fields: fields{
-				Elements: []maestro.QueueItem{},
+				elements: []maestro.QueueItem{},
 			},
 			args: args{
 				id: testQueueItem(1).ID(),
@@ -321,14 +323,14 @@ func TestSliceContainer_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := container.SliceContainer{
-				Elements: tt.fields.Elements,
-			}
+			sc := container.SliceContainer{}
+			pushElements(&sc, tt.fields.elements)
+
 			err := sc.Delete(tt.args.id)
 			if err != nil {
 				require.ErrorIs(t, err, container.ErrItemNotFound, "Delete() did not return the expected error")
 			}
-			require.Equal(t, tt.want, sc.Elements)
+			require.Equal(t, tt.want, sc.Items())
 		})
 	}
 }
@@ -347,4 +349,10 @@ func makeTestQueueItems(count int) []maestro.QueueItem {
 
 func testQueueItem(idx int) maestro.QueueItem {
 	return &TestQueueItem{IDVal: fmt.Sprintf("testId%d", idx), DataVal: fmt.Sprintf("testData%d", idx)}
+}
+
+func pushElements(sc *container.SliceContainer, items []maestro.QueueItem) {
+	for _, item := range items {
+		sc.Push(item)
+	}
 }

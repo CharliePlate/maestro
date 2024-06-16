@@ -13,55 +13,55 @@ var (
 )
 
 type SliceContainer struct {
-	Elements []maestro.QueueItem
+	elements []maestro.QueueItem
+	start    int
 }
 
 func NewSliceContainer() *SliceContainer {
 	return &SliceContainer{
-		Elements: make([]maestro.QueueItem, 0),
+		elements: make([]maestro.QueueItem, 0),
+		start:    0,
 	}
 }
 
 func (sc *SliceContainer) Push(item maestro.QueueItem) {
-	sc.Elements = append(sc.Elements, item)
+	sc.elements = append(sc.elements, item)
 }
 
 func (sc *SliceContainer) Pop() (maestro.QueueItem, error) {
-	if len(sc.Elements) == 0 {
+	if sc.Len() == 0 {
 		return nil, ErrQueueEmpty
 	}
 
-	e := sc.Elements[0]
+	e := sc.elements[sc.start]
+	sc.start++
 
-	if len(sc.Elements) == 1 {
-		sc.Elements = make([]maestro.QueueItem, 0)
-	} else {
-		sc.Elements = sc.Elements[1:]
+	if sc.start > len(sc.elements)/2 {
+		sc.elements = sc.elements[sc.start:]
+		sc.start = 0
 	}
 
 	return e, nil
 }
 
 func (sc *SliceContainer) Len() int {
-	return len(sc.Elements)
+	return len(sc.elements) - sc.start
 }
 
 func (sc *SliceContainer) Items() []maestro.QueueItem {
-	// this should never happen but... just in case
-	if sc.Elements == nil {
+	if sc.elements == nil {
 		return []maestro.QueueItem{}
 	}
-
-	return sc.Elements
+	return sc.elements[sc.start:]
 }
 
 func (sc *SliceContainer) Find(id string) (maestro.QueueItem, error) {
-	for _, item := range sc.Elements {
+	for _, item := range sc.elements {
 		if item.ID() == id {
 			return item, nil
 		}
 	}
-	return nil, ErrItemNotFound
+	return nil, fmt.Errorf("could not find element: %s: %w", id, ErrItemNotFound)
 }
 
 func (sc *SliceContainer) Delete(id string) error {
@@ -70,12 +70,14 @@ func (sc *SliceContainer) Delete(id string) error {
 		return fmt.Errorf("error deleting id %s: %w", id, err)
 	}
 
-	sc.Elements = append(sc.Elements[:idx], sc.Elements[idx+1:]...)
+	idx += sc.start
+
+	sc.elements = append(sc.elements[:idx], sc.elements[idx+1:]...)
 	return nil
 }
 
 func (sc *SliceContainer) findIndexByID(id string) (int, error) {
-	for i, item := range sc.Elements {
+	for i, item := range sc.elements {
 		if item.ID() == id {
 			return i, nil
 		}
